@@ -4,6 +4,7 @@ import re
 from copy import deepcopy
 import logging
 import subprocess
+import collections
 
 try:
     from paramgen_utils import is_logical_expr, is_formula, has_unexpanded_var
