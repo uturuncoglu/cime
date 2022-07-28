@@ -544,3 +544,57 @@ class ParamGen:
                     if val is not None:
                         nml.write("    {} = {}\n".format(var, val))
                 nml.write("/\n\n")
+
+    def write_nuopc(self, output_path):
+        """Writes the reduced data in ESMF config file format if the data conforms to the format.
+
+        Parameters
+        ----------
+        output_path: str object
+            Path to the namelist file to be created.
+        """
+
+        assert (
+            self._reduced
+        ), "The data may be written only after the reduce method is called."
+
+        # check *schema* after reduction
+        for grp, var in self.data.items():
+            # grp is the namelist module name, while var is a dictionary corresponding to the vars in namelist
+            assert isinstance(grp, str), "Invalid data format"
+            assert isinstance(var, dict), "Invalid data format"
+            for vls in var.values():
+                # vnm is the var name, and vls is its values element
+                assert isinstance(vls, dict), "Invalid data format"
+                for val in vls:
+                    # val is a value in the values dict
+                    assert isinstance(val, str), "Invalid data format"
+
+        # write the namelist file
+        with open(output_path, "w") as nuopc:
+            for module in self._data:
+                if 'no_group' != module.strip().lower():
+                    nuopc.write("{}::\n".format(module))
+
+                # populate dictionary
+                my_dict = collections.defaultdict(dict)
+                for var in self._data[module]:
+                    if (isinstance(self._data[module][var]["values"], (list))):
+                        val = ' '.join(self._data[module][var]["values"])
+                        my_dict['00'][var] = val
+                    else:
+                        vals = str(self._data[module][var]["values"]).strip().split(',')
+                        counter = 1
+                        for val in vals:
+                            my_dict['{:02d}'.format(counter)]['{}{:02d}'.format(var, counter)] = val
+                            counter = counter+1
+
+                # write information from dictionary to file
+                for k1 in my_dict.keys():
+                    for k2, v2 in my_dict[k1].items():
+                        if v2 is not None:
+                            nuopc.write("  {}: {}\n".format(k2.strip(), v2.strip()))
+                    nuopc.write("\n")
+
+                if 'no_group' != module.strip().lower():
+                    nuopc.write("::\n")
